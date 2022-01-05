@@ -14,7 +14,13 @@ from homeassistant.components.climate.const import (
     HVAC_MODE_OFF,
 )
 from homeassistant.core import HomeAssistant
-from .const import BASE_URL, DEVICE_DETAUILS_URL, LOGIN_URL, PERIODIC_DATA_URL
+from .const import (
+    BASE_URL,
+    DEVICE_DETAUILS_URL,
+    LOGIN_URL,
+    PERIODIC_DATA_URL,
+    LIVE_DATA_URL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,6 +41,8 @@ class GeoHomeHub:
         self.deviceId = None
         self.gasPrice = None
         self.electricityPrice = None
+        self.gasPower = None
+        self.electricityPower = None
 
     def async_auth(self) -> bool:
         """Validate the username and password."""
@@ -76,38 +84,60 @@ class GeoHomeHub:
             self.get_device_details()
 
         response = requests.get(
-            BASE_URL + PERIODIC_DATA_URL + self.deviceId,
+            BASE_URL + LIVE_DATA_URL + self.deviceId,
             headers={"Authorization": "Bearer " + self.accessToken},
         )
+
         if response.status_code == 200:
             response_json = response.json()
-            consumptionArray = response_json.get("totalConsumptionList")
+            powerArray = response_json.get("power")
 
-            for consumptionItem in consumptionArray:
-                if consumptionItem["commodityType"] == "ELECTRICITY":
-                    if consumptionItem["valueAvailable"]:
-                        self.electricityReading = round(
-                            consumptionItem["totalConsumption"], 2
-                        )
-                        self.electricityReadingTime = consumptionItem["readingTime"]
-                if consumptionItem["commodityType"] == "GAS_ENERGY":
-                    if consumptionItem["valueAvailable"]:
-                        self.gasReading = round(
-                            consumptionItem["totalConsumption"] * 11.3627 / 1000, 2
-                        )
-                        self.gasReadingTime = consumptionItem["readingTime"]
+            for powerItem in powerArray:
+                if powerItem["type"] == "ELECTRICITY":
+                    if powerItem["valueAvailable"]:
+                        self.electricityPower = powerItem["watts"]
+                if powerItem["type"] == "GAS_ENERGY":
+                    if powerItem["valueAvailable"]:
+                        self.gasPower = powerItem["watts"]
 
-            tarrifArray = response_json.get("activeTariffList")
+            response = requests.get(
+                BASE_URL + PERIODIC_DATA_URL + self.deviceId,
+                headers={"Authorization": "Bearer " + self.accessToken},
+            )
+            if response.status_code == 200:
+                response_json = response.json()
+                consumptionArray = response_json.get("totalConsumptionList")
 
-            for tarrifItem in tarrifArray:
-                if tarrifItem["commodityType"] == "ELECTRICITY":
-                    if tarrifItem["valueAvailable"]:
-                        self.electricityPrice = tarrifItem["activeTariffPrice"]
-                if tarrifItem["commodityType"] == "GAS_ENERGY":
-                    if tarrifItem["valueAvailable"]:
-                        self.gasPrice = tarrifItem["activeTariffPrice"]
-            return True
+                for consumptionItem in consumptionArray:
+                    if consumptionItem["commodityType"] == "ELECTRICITY":
+                        if consumptionItem["valueAvailable"]:
+                            self.electricityReading = round(
+                                consumptionItem["totalConsumption"], 2
+                            )
+                            self.electricityReadingTime = consumptionItem["readingTime"]
+                    if consumptionItem["commodityType"] == "GAS_ENERGY":
+                        if consumptionItem["valueAvailable"]:
+                            self.gasReading = round(
+                                consumptionItem["totalConsumption"] * 11.3627 / 1000, 2
+                            )
+                            self.gasReadingTime = consumptionItem["readingTime"]
 
+                tarrifArray = response_json.get("activeTariffList")
+
+                for tarrifItem in tarrifArray:
+                    if tarrifItem["commodityType"] == "ELECTRICITY":
+                        if tarrifItem["valueAvailable"]:
+                            self.electricityPrice = (
+                                tarrifItem["activeTariffPrice"] / 100
+                            )
+                    if tarrifItem["commodityType"] == "GAS_ENERGY":
+                        if tarrifItem["valueAvailable"]:
+                            self.gasPrice = tarrifItem["activeTariffPrice"] / 100
+                return True
+            else:
+                self.accessToken = None
+        else:
+            self.accessToken = None
         return False
 
     async def get_device_data(self):
