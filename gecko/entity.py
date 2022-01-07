@@ -37,7 +37,7 @@ class GeckoEntity(Entity):
         }
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes."""
         return {
             # "time": "**TIME**",  # str(self.coordinator.data.get("time")),
@@ -51,4 +51,8 @@ class GeckoEntity(Entity):
 
     def _on_change(self, sender, old_value, new_value):
         """Notify HA of the change"""
+        _LOGGER.info(
+            f"On Change received for {self._automation_entity.name}/{self._automation_entity.unique_id} from {old_value} to {new_value}"
+        )
+
         self.async_schedule_update_ha_state(force_refresh=True)

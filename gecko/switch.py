@@ -9,34 +9,34 @@ from .entity import GeckoEntity
 async def async_setup_entry(hass, entry, async_add_entities):
     """Setup sensor platform."""
     facade = hass.data[DOMAIN][entry.entry_id].facade
-    entities = [GeckoBinarySwitch(entry, blower) for blower in facade.blowers] + [GeckoBinarySwitch(entry, pump) for pump in facade.pumps]
+    entities = [GeckoBinarySwitch(entry, blower) for blower in facade.blowers]
     async_add_entities(entities, True)
 
-        
+
 class GeckoBinarySwitch(GeckoEntity, SwitchEntity):
     """gecko switch class."""
 
     def __init__(self, config_entry, automation_entity):
         super().__init__(config_entry, automation_entity)
 
-    async def async_turn_on(self, **kwargs):  
+    async def async_turn_on(self, **kwargs):  # pylint: disable=unused-argument
         """Turn on the switch."""
-        if("waterfall" in self._automation_entity.unique_id.lower()):
-            self._automation_entity.set_mode("ON")
-        else:        
-            self._automation_entity.set_mode("HI")
+        self._automation_entity.turn_on()
 
-    async def async_turn_off(self, **kwargs): 
+    async def async_turn_off(self, **kwargs):  # pylint: disable=unused-argument
         """Turn off the switch."""
-        self._automation_entity.set_mode("OFF")
+        self._automation_entity.turn_off()
 
     @property
     def icon(self):
         """Return the icon of this switch."""
-        return "mdi:pump"
+        if isinstance(self._automation_entity, GeckoPump):
+            return "mdi:pump"
+        elif isinstance(self._automation_entity, GeckoBlower):
+            return "mdi:fan"
+        return "mdi:toggle-switch"
 
     @property
     def is_on(self):
         """Return true if the switch is on."""
-        return self._automation_entity._state_sensor.state!="OFF"
-
+        return self._automation_entity.is_on
