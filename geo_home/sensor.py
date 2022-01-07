@@ -54,6 +54,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             GeoHomeElectricityPriceSensor(coordinator, hub),
             GeoHomeGasPowerSensor(coordinator, hub),
             GeoHomeElectricityPowerSensor(coordinator, hub),
+            GeoHomeGasCostPerHourSensor(coordinator, hub),
+            GeoHomeElectricityCostPerHourSensor(coordinator, hub),
         ]
     )
 
@@ -97,7 +99,7 @@ class GeoHomeGasPriceSensor(CoordinatorEntity, SensorEntity):
         self.hub = hub
         self._attr_device_class = SensorDeviceClass.MONETARY
         self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_native_unit_of_measurement = "GBP/kWh"
+        self._attr_native_unit_of_measurement = "£/kWh"
 
     @property
     def name(self):
@@ -159,7 +161,7 @@ class GeoHomeElectricityPriceSensor(CoordinatorEntity, SensorEntity):
         self.hub = hub
         self._attr_device_class = SensorDeviceClass.MONETARY
         self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_native_unit_of_measurement = "GBP/kWh"
+        self._attr_native_unit_of_measurement = "£/kWh"
 
     @property
     def name(self):
@@ -185,7 +187,7 @@ class GeoHomeElectricityPriceSensor(CoordinatorEntity, SensorEntity):
 class GeoHomeGasPowerSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator: CoordinatorEntity, hub: GeoHomeHub):
         self.hub = hub
-        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_device_class = SensorDeviceClass.POWER
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = POWER_WATT
         super().__init__(coordinator)
@@ -218,7 +220,7 @@ class GeoHomeGasPowerSensor(CoordinatorEntity, SensorEntity):
 class GeoHomeElectricityPowerSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator: CoordinatorEntity, hub: GeoHomeHub):
         self.hub = hub
-        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_device_class = SensorDeviceClass.POWER
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = POWER_WATT
         super().__init__(coordinator)
@@ -237,6 +239,76 @@ class GeoHomeElectricityPowerSensor(CoordinatorEntity, SensorEntity):
     def native_value(self):
         """Return the state of the sensor."""
         return self.hub.electricityPower
+
+    @property
+    def icon(self):
+        """Icon to use in the frontend, if any."""
+        return "mdi:flash"
+
+    @property
+    def last_reset(self):
+        return None
+        
+class GeoHomeGasCostPerHourSensor(CoordinatorEntity, SensorEntity):
+    def __init__(self, coordinator: CoordinatorEntity, hub: GeoHomeHub):
+        self.hub = hub
+        self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_native_unit_of_measurement = "£/hour"
+        super().__init__(coordinator)
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return "Gas Cost Per Hour"
+
+    @property
+    def unique_id(self):
+        """Return the unique id of the sensor."""
+        return "geo_home_gas_cost_per_hour"
+
+    @property
+    def native_value(self):
+        """Return the state of the sensor."""
+        if(self.hub.gasPower is not None and self.hub.gasPrice is not None):
+            return round(self.hub.gasPower*self.hub.gasPrice/1000,2)
+        else:
+            return None
+
+    @property
+    def icon(self):
+        """Icon to use in the frontend, if any."""
+        return "mdi:fire"
+
+    @property
+    def last_reset(self):
+        return None
+
+class GeoHomeElectricityCostPerHourSensor(CoordinatorEntity, SensorEntity):
+    def __init__(self, coordinator: CoordinatorEntity, hub: GeoHomeHub):
+        self.hub = hub
+        self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_native_unit_of_measurement = "£/hour"
+        super().__init__(coordinator)
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return "Electricity Cost Per Hour"
+
+    @property
+    def unique_id(self):
+        """Return the unique id of the sensor."""
+        return "geo_home_electricity_cost_per_hour"
+
+    @property
+    def native_value(self):
+        """Return the state of the sensor."""
+        if(self.hub.electricityPower is not None and self.hub.electricityPrice is not None):
+            return round(self.hub.electricityPower*self.hub.electricityPrice/1000,2)
+        else:
+            return None
 
     @property
     def icon(self):
