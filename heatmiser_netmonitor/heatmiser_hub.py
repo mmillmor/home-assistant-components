@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import time
+from datetime import datetime
 
 import requests
 from requests.auth import HTTPBasicAuth
@@ -11,7 +12,12 @@ from homeassistant.components.climate.const import (
     CURRENT_HVAC_HEAT,
     CURRENT_HVAC_OFF,
     HVAC_MODE_HEAT,
-    HVAC_MODE_OFF,
+    HVAC_MODE_OFF
+)
+from homeassistant.const import (
+    STATE_OFF,
+    STATE_ON,
+    STATE_UNAVAILABLE
 )
 from homeassistant.core import HomeAssistant
 
@@ -29,6 +35,8 @@ class HeatmiserStat:
         target_temperature,
         hvac_mode,
         current_state,
+        hw_timer_output,
+        hw_boost_time,
     ):
         """Initialize the stat."""
         self.id = id
@@ -37,6 +45,8 @@ class HeatmiserStat:
         self.target_temperature = target_temperature
         self.hvac_mode = hvac_mode
         self.current_state = current_state
+        self.hw_timer_output=hw_timer_output
+        self.hw_boost_time=hw_boost_time
 
 
 class HeatmiserHub:
@@ -69,6 +79,71 @@ class HeatmiserHub:
 
         return response
 
+    def set_time(self):
+        """Get the networkSetup."""
+
+        response = requests.get(
+            "http://" + self.host + "/networkSetup.htm",
+            auth=HTTPBasicAuth(self.username, self.password),
+        )
+
+        if response.status_code == 200:
+            content = response.content.decode("utf-8")
+            formValues = content.split('input type=hidden name="')
+            ip=formValues[4].split('"')[2]
+            mask=formValues[5].split('"')[2]
+            gate=formValues[6].split('"')[2]
+            dns=formValues[7].split('"')[2]
+            gmtflag=formValues[11].split('"')[2]
+            pin=formValues[12].split('"')[2]
+            localTime=datetime.now()
+            timeStr=localTime.strftime("%H:%M")
+            dateStr=localTime.strftime("%d/%m/%Y")
+            postData={"rdbkck": 0
+		    ,"lognm":self.username
+		    ,"logpd":self.password
+		    ,"ip":ip
+		    ,"mask":mask
+		    ,"gate":gate
+		    ,"dns":dns
+		    ,"timestr":timeStr
+		    ,"datestr":dateStr
+		    ,"timeflag":1
+		    ,"gmtflag":1
+		    ,"pin":pin}
+
+            response = requests.post(
+		    "http://" + self.host + "/networkSetup.htm",
+		    data=postData,
+		    auth=HTTPBasicAuth(self.username, self.password),
+            )
+    
+    async def set_time_async(self):
+        """Set the time asynchronously."""
+        return await self.hass.async_add_executor_job(self.set_time)
+
+    def set_boost(self, name, hours):
+        """Set a hot water boost time."""
+
+        for _ in range(10):
+            response = requests.post(
+                "http://" + self.host + "/right.htm",
+                data={"rdbkck": "1", "curSelStat": name},
+                auth=HTTPBasicAuth(self.username, self.password),
+            )
+            if response.status_code == 200:
+                response = requests.post(
+                    "http://" + self.host + "/right.htm",
+                    data={"hwBoost": '{0:02d}'.format(int(hours))},
+                    auth=HTTPBasicAuth(self.username, self.password),
+                )
+            time.sleep(1)
+    
+    async def set_boost_async(self,name,hours):
+        """Set the time asynchronously."""
+        return await self.hass.async_add_executor_job(self.set_boost,name,hours)
+
+
     def get_devices(self):
         """Get the list of devices."""
 
@@ -97,6 +172,12 @@ class HeatmiserHub:
                     current_state = CURRENT_HVAC_OFF
                     if state == "1":
                         current_state = CURRENT_HVAC_HEAT
+                    hw_state = quickvals[i * 6 + 5 : i * 6 + 6]
+                    hw_timer_output = STATE_UNAVAILABLE
+                    if hw_state == "0":
+                        hw_timer_output = STATE_OFF
+                    elif hw_state == "1":
+                        hw_timer_output = STATE_ON
 
                     print(
                         statname
@@ -115,6 +196,8 @@ class HeatmiserHub:
                             target_temperature,
                             HVAC_MODE_HEAT,
                             current_state,
+                            hw_timer_output,
+                            -1
                         )
                     )
                     i = i + 1
@@ -197,8 +280,24 @@ class HeatmiserHub:
             state = CURRENT_HVAC_OFF
             if current_state == "1":
                 state = CURRENT_HVAC_HEAT
+            hw_timer_output=STATE_UNAVAILABLE
+            try:
+                current_hw_available = int(statvals[12:13])
+                if current_hw_available >2:
+                    current_hw_state = statvals[11:12]
+                    hw_timer_output=STATE_OFF
+                    if current_hw_state =="1":
+                        hw_timer_output=STATE_ON
+            except(ValueError, TypeError):
+                pass
+
+            boostTime=-1
+            boostVals = content.split('hwBoost" value="')[1].split('"')[0]
+            if boostVals !="ff":
+                boostTime=int(boostVals)
+
             stat = HeatmiserStat(
-                0, name, current_temperature, target_temperature, mode, state
+                0, name, current_temperature, target_temperature, mode, state,hw_timer_output,boostTime
             )
             return stat
         else:

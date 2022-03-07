@@ -7,11 +7,14 @@ from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 
-PLATFORMS: list[str] = [Platform.CLIMATE]
+PLATFORMS: list[str] = [Platform.CLIMATE,Platform.WATER_HEATER]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Heatmiser NetMonitor from a config entry."""
+    host = entry.data.get("host")
+    username = entry.data.get("username")
+    password = entry.data.get("password")
 
     hass.config_entries.async_setup_platforms(entry, PLATFORMS)
 

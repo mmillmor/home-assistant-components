@@ -1,0 +1,26 @@
+set_system_time:
+  name: Set System Time
+  description: Set the system time.
+  target:
+    entity:
+      domain: climate
+
+boost_hot_water:
+  name: Boost Hotwater
+  description: Set the boost mode ON defining the period of time for the boost.
+  fields:
+    entity_id:
+      name: Entity ID
+      description: Select entity_id to boost.
+      required: true
+      selector:
+        entity:
+          integration: heatmiser_netmonitor
+          domain: water_heater
+    time_period:
+      name: Time Period
+      description: Set the time period for the boost.
+      required: true
+      example: 01:00:00
+      selector:
+        time:

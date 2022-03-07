@@ -34,7 +34,7 @@ def options_schema(options: dict = None) -> dict:
         ): str,
         vol.Required(
             "password",
-            default=options.get("password", "password"),
+            default=options.get("password", "password1"),
             description="NetMonitor web password",
         ): str,
     }
@@ -42,6 +42,7 @@ def options_schema(options: dict = None) -> dict:
 
 def new_options(host: str, username: str, password: str) -> dict:
     """Create a standard options object."""
+    _LOGGER.error ("in new_options "+password)
     return {"host": host, "username": username, "password": password}
 
 
@@ -62,7 +63,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     hub = HeatmiserHub(data["host"], data["username"], data["password"], hass)
 
-    if not await hub.authenticate():
+    result=await hub.authenticate()
+    if not result:
         raise InvalidAuth
 
     # If you cannot connect:
@@ -71,7 +73,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     # InvalidAuth
 
     # Return info that you want to store in the config entry.
-    return {"title": "Heatmiser NetMonitor"}
+    return {"title": data}
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
@@ -84,6 +86,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage the options."""
         if user_input is not None:
+            info = await validate_input(self.hass, user_input)
             return self.async_create_entry(
                 title="",
                 data=options_data(user_input),
@@ -111,13 +114,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         if user_input is None:
             return self.async_show_form(
-                step_id="user", data_schema=vol.Schema(options_schema())
+                step_id="user", data_schema=vol.Schema(options_schema(user_input))
             )
 
         errors = {}
 
         try:
             info = await validate_input(self.hass, user_input)
+            return self.async_create_entry(title="", data=options_data(user_input))
         except CannotConnect:
             errors["base"] = "cannot_connect"
         except InvalidAuth:
@@ -125,12 +129,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Unexpected exception")
             errors["base"] = "unknown"
-        else:
-            return self.async_create_entry(title=info["title"], data=user_input)
-
-        return self.async_show_form(
-            step_id="user", data_schema=vol.Schema(options_schema()), errors=errors
-        )
 
 
 class CannotConnect(HomeAssistantError):

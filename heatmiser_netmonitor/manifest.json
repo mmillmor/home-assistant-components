@@ -1,5 +1,6 @@
 {
   "domain": "heatmiser_netmonitor",
+  "version": "2.0.0",
   "name": "Heatmiser NetMonitor",
   "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/heatmiser_netmonitor",

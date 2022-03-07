@@ -1,16 +1,28 @@
 """Climate module for the Heatmiser NetMonitor integration."""
+import voluptuous as vol
+import logging
+
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     HVAC_MODE_HEAT,
     HVAC_MODE_OFF,
     SUPPORT_TARGET_TEMPERATURE,
 )
+from homeassistant.components.water_heater import (
+    SUPPORT_OPERATION_MODE,
+    WaterHeaterEntity,
+)
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.helpers import config_validation as cv, entity_platform
 
 from .heatmiser_hub import HeatmiserHub, HeatmiserStat
+from .const import DOMAIN
+from pprint import pprint
+_LOGGER = logging.getLogger(__name__)
+
 
 
 def setup_platform(hass: HomeAssistant, config: ConfigType) -> None:
@@ -19,20 +31,33 @@ def setup_platform(hass: HomeAssistant, config: ConfigType) -> None:
     # The configuration check takes care they are present.
     host = config["host"]
     username = config["username"]
-    password = config.get("password")
+    password = config["password"]
 
     hub = HeatmiserHub(host, username, password, hass)
     hub.get_devices_async()
 
 
-async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
+async def async_setup_entry(hass: HomeAssistant, config_entry , async_add_entities):
     """Set up Heatmiser climate based on config_entry."""
-    host = entry.data.get("host")
-    username = entry.data.get("username")
-    password = entry.data.get("password")
+    host = config_entry.data.get("host")
+    username = config_entry.data.get("username")
+    password = config_entry.data.get("password")
+    
     hub = HeatmiserHub(host, username, password, hass)
     devices = await hub.get_devices_async()
-    async_add_entities(HeatmiserClimate(stat, hub) for stat in devices)
+    entities = []
+    if devices:
+        for stat in devices:
+            entities.append(HeatmiserClimate(stat, hub))
+    async_add_entities(entities, True)
+
+    platform = entity_platform.async_get_current_platform()
+
+    platform.async_register_entity_service(
+        "set_system_time",
+        {},
+        "async_set_time",
+    )
 
 
 class HeatmiserClimate(ClimateEntity):
@@ -95,6 +120,10 @@ class HeatmiserClimate(ClimateEntity):
         await self.hub.set_mode_async(self.stat.name, hvac_mode)
         await self.async_update()
 
+    async def async_set_time(self) -> None:
+        """Set the time."""
+        await self.hub.set_time_async()
+
     async def async_update(self) -> None:
         """Retrieve latest state."""
         new_stat_state = await self.hub.get_device_status_async(self.stat.name)
@@ -106,3 +135,5 @@ class HeatmiserClimate(ClimateEntity):
     def device_info(self):
         """Return a device description for device registry."""
         return DeviceInfo(manufacturer="Heatmiser", name=self.stat.name)
+
+
