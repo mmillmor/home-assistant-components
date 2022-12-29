@@ -1,0 +1,29 @@
+<html>
+<head>
+<script>
+
+function login(){
+
+	const response = fetch("http://api.geotogether.com/usersservice/v2/login", {
+	method: 'POST',
+	headers: {
+	  'Accept': 'application/json',
+	  'Content-Type': 'application/json'
+	},
+	body: `{ "identity": "test@test.com","password":"abc" }`,
+	});
+
+	response.json().then(data => {
+		document.getElementById('result').innerText =JSON.stringify(data);
+	});
+
+}
+
+</script>
+</head>
+
+<body onload="login()">
+<p id="result">
+</p>
+<body>
+</html>
