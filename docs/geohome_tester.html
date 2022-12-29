@@ -1,29 +1,36 @@
 <html>
-<head>
+<body >
+
+    <form id="loginTest">
+        username:<input type="text" name="username" ><br/>
+        password:<input type="password" name="password" ><br/>
+        <input type="submit">
+    </form>
+<div id="result">
+</div>
+
 <script>
+	form=document.getElementById('loginTest')
+	form.onsubmit = async (e) => {
+      e.preventDefault();
 
-function login(){
+        data = {
+          identity : form.querySelector('input[name="username"]').value,
+          password : form.querySelector('input[name="password"]').value,
+        }
 
-	const response = fetch("http://api.geotogether.com/usersservice/v2/login", {
-	method: 'POST',
-	headers: {
-	  'Accept': 'application/json',
-	  'Content-Type': 'application/json'
-	},
-	body: `{ "identity": "test@test.com","password":"abc" }`,
-	});
+        let response = await fetch('https://api.geotogether.com/usersservice/v2/login', {
+                method: 'POST',
+				headers: {
+				  'Accept': 'application/json',
+				  'Content-Type': 'application/json'
+				},
+                body: JSON.stringify(data),
+        })
 
-	response.json().then(data => {
-		document.getElementById('result').innerText =JSON.stringify(data);
-	});
-
-}
-
+        let text = await response.text(); // read response body as text
+        document.querySelector("#result").innerHTML = text;
+    };
 </script>
-</head>
-
-<body onload="login()">
-<p id="result">
-</p>
 <body>
 </html>
