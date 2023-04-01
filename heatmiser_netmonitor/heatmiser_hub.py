@@ -11,6 +11,7 @@ from requests.auth import HTTPBasicAuth
 from homeassistant.components.climate.const import (
     CURRENT_HVAC_HEAT,
     CURRENT_HVAC_OFF,
+    CURRENT_HVAC_IDLE,
     HVAC_MODE_HEAT,
     HVAC_MODE_OFF
 )
@@ -277,9 +278,12 @@ class HeatmiserHub:
             mode = HVAC_MODE_HEAT
             if current_mode == "1":
                 mode = HVAC_MODE_OFF
-            state = CURRENT_HVAC_OFF
-            if current_state == "1":
-                state = CURRENT_HVAC_HEAT
+                state = CURRENT_HVAC_OFF
+            else:
+                state = CURRENT_HVAC_IDLE
+                if current_state == "1":
+                    state = CURRENT_HVAC_HEAT
+                
             hw_timer_output=STATE_UNAVAILABLE
             try:
                 current_hw_available = int(statvals[12:13])
