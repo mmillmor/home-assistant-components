@@ -140,9 +140,16 @@ class HeatmiserWaterHeater(WaterHeaterEntity):
             self.water_heater = new_heater_state
 
     @property
-    def device_info(self):
-        """Return a device description for device registry."""
-        return DeviceInfo(manufacturer="Heatmiser", name=self.water_heater.name +" Hot Water")
+    def device_info(self) -> DeviceInfo:
+        """Return the device info."""
+        return DeviceInfo(
+            identifiers={
+                # Serial numbers are unique identifiers within a specific domain
+                (DOMAIN, "heatmiser_nermonitor")
+            },
+            name="Netmonitor",
+            manufacturer="Heatmiser",
+        )
 
 
 
