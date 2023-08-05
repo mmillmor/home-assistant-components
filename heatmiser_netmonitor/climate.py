@@ -132,8 +132,15 @@ class HeatmiserClimate(ClimateEntity):
             self.stat = new_stat_state
 
     @property
-    def device_info(self):
-        """Return a device description for device registry."""
-        return DeviceInfo(manufacturer="Heatmiser", name=self.stat.name)
+    def device_info(self) -> DeviceInfo:
+        """Return the device info."""
+        return DeviceInfo(
+            identifiers={
+                # Serial numbers are unique identifiers within a specific domain
+                (DOMAIN, "heatmiser_nermonitor")
+            },
+            name="Netmonitor",
+            manufacturer="Heatmiser",
+        )
 
 
