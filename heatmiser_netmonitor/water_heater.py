@@ -5,11 +5,11 @@ import logging
 import voluptuous as vol
 
 from homeassistant.components.water_heater import (
-    SUPPORT_OPERATION_MODE,
+    WaterHeaterEntityFeature,
     WaterHeaterEntity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE, TEMP_CELSIUS
+from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity import DeviceInfo
@@ -19,10 +19,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .heatmiser_hub import HeatmiserHub, HeatmiserStat
 from .const import  DOMAIN
 _LOGGER = logging.getLogger(__name__)
-
-SUPPORT_FLAGS_HEATER = SUPPORT_OPERATION_MODE
-
-SUPPORT_WATER_HEATER = [ STATE_ON, STATE_OFF]
 
 def setup_platform(hass: HomeAssistant, config: ConfigType) -> None:
     """Set up the Heatmiser platform."""
@@ -71,9 +67,13 @@ class HeatmiserWaterHeater(WaterHeaterEntity):
 
     def __init__(self, water_heater: HeatmiserStat, hub: HeatmiserHub) -> None:
         """Set up Heatmiser climate entity based on a stat."""
-        self._attr_supported_features = SUPPORT_WATER_HEATER
+        self._attr_supported_features = WaterHeaterEntityFeature.ON_OFF
         self.water_heater = water_heater
         self.hub = hub
+        self._attr_operation_list = [
+            "gas",
+            "off",
+        ]
 
     @property
     def name(self):
@@ -88,7 +88,7 @@ class HeatmiserWaterHeater(WaterHeaterEntity):
     @property
     def temperature_unit(self):
         """Return the unit of measurement."""
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
     @property
     def current_operation(self):
@@ -106,12 +106,12 @@ class HeatmiserWaterHeater(WaterHeaterEntity):
     @property
     def supported_features(self):
         """Return the list of supported features."""
-        return SUPPORT_FLAGS_HEATER
+        return self._attr_supported_features
 
     @property
     def operation_list(self):
         """List of available operation modes."""
-        return SUPPORT_WATER_HEATER
+        return self._attr_operation_list
 
     async def async_turn_on(self, **kwargs):
         """Turn on hotwater."""

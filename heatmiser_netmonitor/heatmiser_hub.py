@@ -9,11 +9,8 @@ import requests
 from requests.auth import HTTPBasicAuth
 
 from homeassistant.components.climate.const import (
-    CURRENT_HVAC_HEAT,
-    CURRENT_HVAC_OFF,
-    CURRENT_HVAC_IDLE,
-    HVAC_MODE_HEAT,
-    HVAC_MODE_OFF
+    HVACAction,
+    HVACMode
 )
 from homeassistant.const import (
     STATE_OFF,
@@ -170,9 +167,9 @@ class HeatmiserHub:
                     if target_temperature_str != "NC":
                         target_temperature = int(target_temperature_str)
                     state = quickvals[i * 6 + 4 : i * 6 + 5]
-                    current_state = CURRENT_HVAC_OFF
+                    current_state = HVACAction.OFF
                     if state == "1":
-                        current_state = CURRENT_HVAC_HEAT
+                        current_state = HVACAction.HEATING
                     hw_state = quickvals[i * 6 + 5 : i * 6 + 6]
                     hw_timer_output = STATE_UNAVAILABLE
                     if hw_state == "0":
@@ -195,7 +192,7 @@ class HeatmiserHub:
                             statname,
                             current_temperature,
                             target_temperature,
-                            HVAC_MODE_HEAT,
+                            HVACMode.HEAT,
                             current_state,
                             hw_timer_output,
                             -1
@@ -234,7 +231,7 @@ class HeatmiserHub:
     def set_mode(self, name, hvac_mode):
         """Set a device target mode."""
         mode = "0"
-        if hvac_mode == HVAC_MODE_OFF:
+        if hvac_mode == HVACMode.OFF:
             mode = "1"
         for _ in range(10):
             response = requests.post(
@@ -275,14 +272,14 @@ class HeatmiserHub:
                 target_temperature = int(target_temperature_str)
             current_state = statvals[8:9]
             current_mode = statvals[10:11]
-            mode = HVAC_MODE_HEAT
+            mode = HVACMode.HEAT
             if current_mode == "1":
-                mode = HVAC_MODE_OFF
-                state = CURRENT_HVAC_OFF
+                mode = HVACMode.OFF
+                state = HVACAction.OFF
             else:
-                state = CURRENT_HVAC_IDLE
+                state = HVACAction.IDLE
                 if current_state == "1":
-                    state = CURRENT_HVAC_HEAT
+                    state = HVACAction.HEATING
                 
             hw_timer_output=STATE_UNAVAILABLE
             try:

@@ -4,15 +4,11 @@ import logging
 
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
-    HVAC_MODE_HEAT,
-    HVAC_MODE_OFF,
-    SUPPORT_TARGET_TEMPERATURE,
+    HVACAction,
+    HVACMode,
+    ClimateEntityFeature
 )
-from homeassistant.components.water_heater import (
-    SUPPORT_OPERATION_MODE,
-    WaterHeaterEntity,
-)
-from homeassistant.const import TEMP_CELSIUS
+from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.typing import ConfigType
@@ -65,10 +61,11 @@ class HeatmiserClimate(ClimateEntity):
 
     def __init__(self, stat: HeatmiserStat, hub: HeatmiserHub) -> None:
         """Set up Heatmiser climate entity based on a stat."""
-        self._attr_supported_features = SUPPORT_TARGET_TEMPERATURE
-        self._attr_hvac_modes = [HVAC_MODE_HEAT, HVAC_MODE_OFF]
+        self._attr_supported_features = (ClimateEntityFeature(0) | ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.TURN_ON | ClimateEntityFeature.TURN_OFF)
+        self._hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
         self.stat = stat
         self.hub = hub
+        self._enable_turn_on_off_backwards_compatibility = False
 
     @property
     def name(self):
@@ -83,7 +80,7 @@ class HeatmiserClimate(ClimateEntity):
     @property
     def temperature_unit(self):
         """Return the unit of measurement which this thermostat uses."""
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
     @property
     def current_temperature(self):
@@ -114,6 +111,19 @@ class HeatmiserClimate(ClimateEntity):
     def hvac_mode(self):
         """Return current operation ie. heat, cool, idle."""
         return self.stat.hvac_mode
+
+    @property
+    def hvac_modes(self) -> list[HVACMode]:
+        """Return the list of available operation modes."""
+        return self._hvac_modes
+
+    async def async_turn_on(self):
+        await self.hub.set_mode_async(self.stat.name, HVACMode.HEAT)
+        await self.async_update()
+
+    async def async_turn_off(self):
+        await self.hub.set_mode_async(self.stat.name, HVACMode.OFF)
+        await self.async_update()
 
     async def async_set_hvac_mode(self, hvac_mode) -> None:
         """Set HVAC mode."""
